@@ -45,9 +45,9 @@ class GPTConfig:
 
 # ----------------------------DataLoader-------------------------------
 def load_tokens(filename):
-  arr = np.load(filename)
-  arr = arr.astype(np.int16)
-  ptt = torch.tensor(arr, dtype=torch.long)
+  npt = np.load(filename)
+  npt = npt.astype(np.int32) # added after video
+  ptt = torch.tensor(npt, dtype=torch.long)
   return ptt
 
 class MyLoader:
@@ -56,13 +56,9 @@ class MyLoader:
     self.B, self.T = config.TRAINING.BATCH_SIZE, config.DATASET.BLOCK_SIZE
     self.cur_rank = cur_rank
     self.world_size = world_size
+    
 
     self.shard_list = sorted(glob.glob(os.path.join(cfg.PATHS.DATA_ROOT, 'edu_fineweb10B', f'*{mode}*.npy')))
-    self.curr_shard = 0 
-
-    self.tokens = load_tokens(self.shard_list[self.curr_shard])
-    self.current_pos = self.B * self.T * cur_rank
-    print(f"Loaded {len(self.tokens)} tokens")
     self.reset()
 
   def reset(self):
@@ -232,7 +228,6 @@ class GPT(nn.Module):
     pos = torch.arange(0, T, device=idx.device)
     pos_emb = self.transformer.wpe(pos)
 
-    print(idx.max(), idx.min(), self.transformer.wte.weight.shape)
     tok_emb = self.transformer.wte(idx)
 
     x = pos_emb + tok_emb
@@ -321,7 +316,7 @@ if __name__ == '__main__':
   torch.cuda.manual_seed(1337)
 
   cfg = get_cfg_defaults()
-  cfg.merge_from_file("./configs/experiments/gpt2.yaml")
+  cfg.merge_from_file("./configs/experiments/gpt1.yaml")
 
   # DISTRIBUTED USAGE
   if cfg.TRAINING.DISTRIBUTED:
@@ -342,7 +337,6 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     device_cap = torch.cuda.get_device_capability()
-  device = torch.device('cpu')
   
   total_batch_size = 2**18 # ~0.5M tokens 
   cur_batch = cfg.TRAINING.BATCH_SIZE * cfg.DATASET.BLOCK_SIZE * ddp_world_size
@@ -410,7 +404,7 @@ if __name__ == '__main__':
 
 
     # Sampling 
-    if epoch > 0 and epoch %100 ==0 :
+    if epoch > 0 and epoch %250 ==0 or epoch == cfg.TRAINING.ITER - 1:
       num_sequences = 5
       max_length = 30 
       tokens = enc.encode("Hello, I'm a language model,")
@@ -424,6 +418,7 @@ if __name__ == '__main__':
       while xgen.size(1) < max_length:
         with torch.no_grad():
           logits, _ = model(xgen)
+          logits = logits[:, -1, :]
 
           probs = F.softmax(logits, dim=-1)
           topk_probs, topk_ind = torch.topk(probs, 50, dim=-1)
@@ -435,7 +430,6 @@ if __name__ == '__main__':
         tokens = xgen[i, :max_length].tolist()
         decoded = enc.decode(tokens)
         print(f"GPU {ddp_local_rank}, sample {i}: {decoded}")
-
 
 
     # Train
@@ -483,6 +477,14 @@ if __name__ == '__main__':
 
     if master_process:
       print(f"epoch: {epoch}, loss: {loss_accum.item(): .4f}, lr: {lr:.4e}, gradnorm: {norm:.4f}, time: {total: .4f}, tok/sec: {token_per_sec:.4f}")
+
+    if epoch % 100==0:
+      ckp_dict = {
+                  'state_dict': model.state_dict(),
+                  'optimizer_state_dict': optimizer.state_dict(),
+                  'args': cfg,
+                }
+      torch.save(ckp_dict, f"./checkpoint/gpt2.pt")
 
   if cfg.TRAINING.DISTRIBUTED:
     destroy_process_group()
