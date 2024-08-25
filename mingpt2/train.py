@@ -489,33 +489,4 @@ if __name__ == '__main__':
   if cfg.TRAINING.DISTRIBUTED:
     destroy_process_group()
 
-  # ic(logits.shape, loss.item())
-  e()
-
-
-
-  # model = GPT2LMHeadModel.from_pretrained('gpt2')
-  # model = model.to(device)
-  num_sequences = 5
-  max_length = 30
-  # generation
-  while x.size(1) < max_length:
-    with torch.no_grad():
-      logits = model(x)
-      ic(logits.shape)
-      e()
-      logits = logits[:, -1, :]
-      probs = F.softmax(logits, dim=-1)
-
-      top_k_probs, top_k_ind = torch.topk(probs, 50, dim=-1)
-
-      ix = torch.multinomial(top_k_probs, 1)
-      xcol = torch.gather(top_k_ind, dim=-1, index=ix)
-      x = torch.cat((x, xcol), dim=1)
-
   
-  for i in range(num_sequences):
-    tokens = x[i, :max_length].tolist()
-    decoded = enc.decode(tokens)
-    print(">", decoded)
-  print("Dint crash :")

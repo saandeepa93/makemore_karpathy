@@ -15,3 +15,12 @@
 *  `nice numbers` Keep hyperparameters primarily at powers of 2
 * Optimizers used `fused=True`. Basically performs optimization in a fused kernel. Increases processing time for my gpu
 * `grad_accum` to imitate a bigger batch size by performing step only after accumulating gradients until specified bsize/
+
+## **BatchNorm**
+
+* Stablize the activations of NN
+* Acts as a regularizer because you add some noise of other inputs in a batch to teh current input. In the form of mean and std.
+* Keeps track of running mean and std for inference later on. Model eval will ensure this in pytorch 
+
+## Init
+* Best first loss case for NLL/CE is -log(1/k). To do this, use kaiming he init or uniform init
