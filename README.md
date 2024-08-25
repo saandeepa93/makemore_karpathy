@@ -11,3 +11,8 @@
   * `minbpe` - Karpathy's BPE tokenizer implementation. Has training module.
 
 *The code follows the tutorial but retains to some of my common practices like `YACS` configuration, and `einops`, `rearrage` libraries for tensor manipulation etc.*
+
+### **GPT2 results after training 1B tokens**
+<p align="center">
+  <img src="mingpt2/assets/gpt2_res.png" width="410" height="300" />
+</p>
