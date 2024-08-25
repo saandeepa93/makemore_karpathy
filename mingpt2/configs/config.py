@@ -3,6 +3,8 @@ from yacs.config import CfgNode as CN
 _C = CN()
 
 # PATHS
+_C.PATHS = CN()
+_C.PATHS.DATA_ROOT = "dsd"
 
 _C.DATASET = CN()
 _C.DATASET.BLOCK_SIZE = 4
